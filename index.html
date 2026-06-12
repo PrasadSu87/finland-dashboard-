@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finland — Regional Dashboard (Real Map)</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#003580;--blue2:#1a6fc4;--blue-pale:#e8f1fb;--blue-faint:#f0f6ff;
+  --gold:#c9a227;--gold-light:#fdf3d0;
+  --bg:#f2f5fa;--surface:#ffffff;--surface2:#eef2f8;
+  --text:#0d1b2e;--text2:#4a5d72;--text3:#8fa0b4;
+  --border:rgba(0,53,128,0.10);
+  --green:#1d8a4e;--red:#c0392b;
+  --r:12px;--rs:8px;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5}
+
+header{height:54px;background:var(--blue);display:flex;align-items:center;padding:0 1.5rem;gap:16px;justify-content:space-between;box-shadow:0 2px 12px rgba(0,53,128,0.25);position:relative;z-index:10}
+.hd-left{display:flex;align-items:center;gap:12px}
+.flag{width:40px;height:27px;background:#fff;border-radius:3px;position:relative;overflow:hidden;flex-shrink:0}
+.flag-h{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:33%;background:var(--blue)}
+.flag-v{position:absolute;top:0;bottom:0;left:27%;width:18%;background:var(--blue)}
+.site-title{font-family:'DM Serif Display',serif;font-size:18px;color:#fff;font-weight:400}
+.site-sub{font-size:11px;color:rgba(255,255,255,0.55);margin-left:4px;font-weight:300}
+.clock{font-size:12px;color:rgba(255,255,255,0.65);min-width:175px;text-align:right}
+.live-pill{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.18);border-radius:20px;padding:4px 10px;font-size:11px;color:rgba(255,255,255,0.85)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#4dff91;animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* src-bar removed */
+
+.layout{display:grid;grid-template-columns:260px 1fr;height:calc(100vh - 54px);overflow:hidden}
+
+/* MAP — dark blue panel matching image */
+.map-panel{background:var(--blue);border-right:none;display:flex;flex-direction:column;overflow:hidden}
+.map-header{padding:14px 16px 10px}
+.map-header h2{font-size:10px;font-weight:600;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:.12em}
+.map-header p{font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px}
+.map-svg-wrap{flex:1;padding:8px 10px;overflow:hidden;position:relative}
+#finMap{width:100%;height:100%;display:block}
+#loading-map{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(255,255,255,0.5);background:var(--blue)}
+
+/* Real D3 map styles */
+.region-path{cursor:pointer;transition:opacity .15s}
+.region-path:hover{opacity:.85;stroke:#f59e0b!important;stroke-width:1.8px!important}
+.region-label{pointer-events:none;font-family:'DM Sans',sans-serif;font-size:5.5px;fill:rgba(255,255,255,0.9);text-anchor:middle;dominant-baseline:middle}
+
+.map-footer{padding:10px 16px 14px;border-top:1px solid rgba(255,255,255,0.1)}
+.legend-row{display:flex;align-items:center;gap:8px}
+.leg-label{font-size:10px;color:rgba(255,255,255,0.45)}
+.leg-bar{flex:1;height:5px;border-radius:3px;background:linear-gradient(to right,rgba(255,255,255,0.2),rgba(255,255,255,0.85))}
+.selected-chip{margin-top:10px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:9px 12px;display:flex;align-items:center;gap:10px}
+.chip-dot{width:9px;height:9px;border-radius:50%;background:var(--gold);flex-shrink:0;box-shadow:0 0 6px rgba(201,162,39,0.6)}
+.chip-name{font-size:13px;font-weight:600;color:#fff}
+.chip-sub{font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px}
+
+/* CONTENT */
+.content-panel{display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;background:var(--bg)}
+
+/* Scorecard strip — floating cards style matching image */
+.score-strip{display:flex;gap:12px;padding:14px 16px;background:var(--bg);border-bottom:2px solid var(--border);flex-shrink:0}
+.sc{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:0 1px 8px rgba(0,53,128,0.06);display:flex;flex-direction:column;justify-content:center}
+.sc-label{font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0;margin-bottom:6px;font-weight:400}
+.sc-val{font-size:22px;font-weight:600;color:var(--blue);line-height:1}
+.sc-sub{font-size:10px;margin-top:4px}
+.trend-up{color:var(--green)}.trend-dn{color:var(--red)}.trend-neu{color:var(--text3)}
+
+/* Tabs — pill button style matching image */
+.tabs{height:auto;background:transparent;border-bottom:none;display:flex;align-items:center;padding:14px 16px 10px;gap:8px;flex-shrink:0}
+.tab{padding:7px 18px;font-size:13px;font-weight:500;color:var(--text2);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;background:var(--surface);transition:all .15s;line-height:1}
+.tab:hover{color:var(--blue);border-color:var(--blue-pale);background:var(--blue-faint)}
+.tab.active{color:#fff;background:var(--blue);border-color:var(--blue);box-shadow:0 2px 8px rgba(0,53,128,0.25)}
+
+.pages{padding:0 16px 1.4rem}
+.page{display:none}.page.active{display:block}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.g12{display:grid;grid-template-columns:1.4fr 1fr;gap:12px;margin-bottom:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px}
+.card-title{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card-title span{font-size:10px;background:var(--blue-pale);color:var(--blue);padding:2px 7px;border-radius:20px;font-weight:500;text-transform:none;letter-spacing:0}
+.src-note{font-size:9px;color:var(--text3);margin-top:6px;font-style:italic}
+.src-note a{color:var(--blue2);text-decoration:none}
+.ft{width:100%;border-collapse:collapse}
+.ft tr{border-bottom:1px solid var(--border)}.ft tr:last-child{border-bottom:none}
+.ft td{padding:5px 0;font-size:12px}
+.ft td:first-child{color:var(--text2);width:55%}
+.ft td:last-child{font-weight:500;color:var(--text);text-align:right}
+.rank-list{display:flex;flex-direction:column}
+.rank-item{display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid var(--border);border-radius:4px}
+.rank-item:last-child{border-bottom:none}
+.rank-num{font-size:10px;font-weight:600;color:var(--text3);width:16px;text-align:center}
+.rank-name{font-size:11px;color:var(--text);flex:1}
+.rank-bar{height:5px;border-radius:3px;min-width:2px;transition:width .5s}
+.rank-val{font-size:11px;color:var(--text2);width:34px;text-align:right}
+.comp-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.comp-label{font-size:11px;color:var(--text2);width:86px;flex-shrink:0}
+.comp-bars{flex:1;display:flex;flex-direction:column;gap:2px}
+.comp-bar-wrap{display:flex;align-items:center;gap:5px}
+.comp-bar{height:5px;border-radius:3px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.comp-val{font-size:10px;color:var(--text3);width:38px}
+.weather-box{text-align:center;padding:.5rem 0}
+.w-icon{font-size:40px;line-height:1;margin-bottom:4px}
+.w-temp{font-family:'DM Serif Display',serif;font-size:40px;color:var(--blue);line-height:1}
+.w-desc{font-size:12px;color:var(--text2);margin-top:4px}
+.w-row{display:flex;gap:16px;justify-content:center;margin-top:10px}
+.w-detail-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.w-detail-val{font-size:13px;font-weight:500;color:var(--text);margin-top:1px}
+.tooltip{position:fixed;background:rgba(0,23,60,.92);color:#fff;padding:7px 11px;border-radius:8px;font-size:11px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:999;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-left">
+    <div class="flag"><div class="flag-h"></div><div class="flag-v"></div></div>
+    <div><span class="site-title">Finland</span><span class="site-sub">Regional Dashboard — Real NLS Map</span></div>
+  </div>
+  <div class="live-pill"><div class="live-dot"></div>Live</div>
+  <div class="clock" id="clock"></div>
+</header>
+
+<div class="layout">
+  <div class="map-panel">
+    <div class="map-header">
+      <h2>19 regions · NLS map</h2>
+      <p>Color = Population · Click any region to explore</p>
+    </div>
+    <div class="map-svg-wrap">
+      <div id="loading-map">Loading real map…</div>
+      <svg id="finMap" viewBox="0 0 240 460" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="map-footer">
+      <div class="legend-row">
+        <span class="leg-label">31K</span>
+        <div class="leg-bar"></div>
+        <span class="leg-label">1.73M</span>
+      </div>
+      <div class="selected-chip">
+        <div class="chip-dot"></div>
+        <div>
+          <div class="chip-name" id="chipName">Uusimaa</div>
+          <div class="chip-sub" id="chipSub">Helsinki · 9,568 km²</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-panel">
+    <div class="score-strip">
+      <div class="sc">
+        <div class="sc-label">Population</div>
+        <div class="sc-val" id="sPop">—</div>
+        <div class="sc-sub trend-neu" id="sPopT">stat.fi 2023</div>
+      </div>
+      <div class="sc">
+        <div class="sc-label">GDP/capita</div>
+        <div class="sc-val" id="sGDP">—</div>
+        <div class="sc-sub" id="sGDPT"></div>
+      </div>
+      <div class="sc">
+        <div class="sc-label">Unemployment</div>
+        <div class="sc-val" id="sUnem">—</div>
+        <div class="sc-sub" id="sUnemT"></div>
+      </div>
+      <div class="sc">
+        <div class="sc-label">Area km²</div>
+        <div class="sc-val" id="sArea">—</div>
+        <div class="sc-sub trend-neu">stat.fi</div>
+      </div>
+      <div class="sc">
+        <div class="sc-label">Weather</div>
+        <div class="sc-val" id="sWeather">—</div>
+        <div class="sc-sub" id="sWeatherT"><span id="sWeatherCity">Helsinki</span> · open-meteo</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('overview',this)">Overview</div>
+      <div class="tab" onclick="switchTab('economy',this)">Economy</div>
+      <div class="tab" onclick="switchTab('society',this)">Society</div>
+      <div class="tab" onclick="switchTab('climate',this)">Climate</div>
+    </div>
+
+    <div class="pages">
+
+      <div class="page active" id="page-overview">
+        <div class="g12">
+          <div class="card">
+            <div class="card-title">Key facts <span id="ov-tag">—</span></div>
+            <table class="ft" id="ovTable"></table>
+            <div class="src-note" id="ovSrc"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Live weather — <span id="weatherCardCity">Helsinki</span></div>
+            <div id="weatherWidget"><div style="font-size:11px;color:var(--text3);padding:1rem;text-align:center">Fetching…</div></div>
+            <div class="src-note">Source: <a href="https://open-meteo.com" target="_blank">open-meteo.com</a> — updates on region select · free, no key</div>
+          </div>
+        </div>
+        <div class="g2">
+          <div class="card">
+            <div class="card-title">Population — all 19 regions <span>stat.fi 2023</span></div>
+            <div style="position:relative;height:250px"><canvas id="popChart"></canvas></div>
+            <div class="src-note">Source: <a href="https://stat.fi" target="_blank">Statistics Finland</a> · selected region in amber</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Region profile</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-style:italic;line-height:1.6" id="knownText">—</div>
+            <table class="ft" id="natureTable"></table>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-economy">
+        <div class="g12">
+          <div class="card">
+            <div class="card-title">GDP per capita — all regions <span>Eurostat 2022</span></div>
+            <div style="position:relative;height:250px"><canvas id="gdpChart"></canvas></div>
+            <div class="src-note">Eurostat nama_10r_2gdp 2022 · amber = selected region</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Economic profile</div>
+            <table class="ft" id="econTable"></table>
+            <div style="margin-top:12px">
+              <div class="card-title" style="margin-bottom:8px">vs Finland national avg</div>
+              <div id="compRows"></div>
+            </div>
+          </div>
+        </div>
+        <div class="g2">
+          <div class="card">
+            <div class="card-title">Unemployment — all regions <span>EURES 2023</span></div>
+            <div style="position:relative;height:220px"><canvas id="unemChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Unemployment ranking</div>
+            <div class="rank-list" id="unemRank"></div>
+            <div class="src-note">EURES / Statistics Finland 2023</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-society">
+        <div class="g2">
+          <div class="card">
+            <div class="card-title">Demographics</div>
+            <table class="ft" id="demogTable"></table>
+            <div class="src-note">stat.fi 2023–2024 · Eurostat 2022</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Population density <span>stat.fi</span></div>
+            <div style="position:relative;height:240px"><canvas id="densChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-climate">
+        <div class="g12">
+          <div class="card">
+            <div class="card-title">Monthly temperatures — Helsinki <span>FMI 1991–2020</span></div>
+            <div style="position:relative;height:220px"><canvas id="climChart"></canvas></div>
+            <div class="src-note"><a href="https://en.ilmatieteenlaitos.fi/climate-normals" target="_blank">FMI</a> climate normals 1991–2020 · Helsinki-Vantaa station</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Climate <span id="climTag">—</span></div>
+            <table class="ft" id="climTable"></table>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-title">January temperature — all regions <span>FMI / Wikipedia est.</span></div>
+          <div style="position:relative;height:140px"><canvas id="winterChart"></canvas></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ================================================================
+// REGION DATA — keyed by NATCODE (matches NLS GeoJSON NATCODE field)
+// Names are English equivalents of Finnish NAMEFIN
+// ================================================================
+const NATCODE_TO_NAME = {
+  '01':'Uusimaa','02':'Southwest Finland','04':'Satakunta',
+  '05':'Kanta-Häme','06':'Pirkanmaa','07':'Päijät-Häme',
+  '08':'Kymenlaakso','09':'South Karelia','10':'South Savo',
+  '11':'North Savo','12':'North Karelia','13':'Central Finland',
+  '14':'South Ostrobothnia','15':'Ostrobothnia','16':'Central Ostrobothnia',
+  '17':'North Ostrobothnia','18':'Kainuu','19':'Lapland','21':'Åland'
+};
+
+const REGIONS = {
+  'Uusimaa':             {pop:1733033,gdp:60600,unem:8.0, capital:'Helsinki',    area:9568, density:181.1,forest:44,lakes:320, winter:-4.5,summerHigh:21.8,rain:660,snowDays:55, known:'Capital region · finance, ICT, government, international business · most populous region in Finland'},
+  'Southwest Finland':   {pop:487516, gdp:38000,unem:7.6, capital:'Turku',       area:10910,density:44.7, forest:58,lakes:1100,winter:-4.8,summerHigh:21.0,rain:630,snowDays:65, known:'Archipelago coast · historic Turku · shipbuilding · pharmaceutical industry'},
+  'Satakunta':           {pop:212653, gdp:35000,unem:9.5, capital:'Pori',        area:8269, density:25.7, forest:67,lakes:900, winter:-5.5,summerHigh:20.5,rain:590,snowDays:70, known:'Industrial coast · Pori Jazz Festival · steel and metal industries · Rauma UNESCO lace'},
+  'Kanta-Häme':          {pop:171748, gdp:34000,unem:8.4, capital:'Hämeenlinna', area:5199, density:33.0, forest:64,lakes:1300,winter:-6.0,summerHigh:20.8,rain:600,snowDays:75, known:'Agricultural heartland · medieval Hämeenlinna castle · lake district'},
+  'Pirkanmaa':           {pop:545406, gdp:39000,unem:8.8, capital:'Tampere',     area:12585,density:43.3, forest:63,lakes:2200,winter:-6.8,summerHigh:21.0,rain:585,snowDays:80, known:"Finland's second-largest city · Nokia heritage · strong universities · growing tech hub"},
+  'Päijät-Häme':         {pop:200171, gdp:33000,unem:10.2,capital:'Lahti',       area:5125, density:39.1, forest:63,lakes:800, winter:-6.5,summerHigh:21.0,rain:575,snowDays:80, known:'European Green Capital 2021 · winter sports · design and furniture industry'},
+  'Kymenlaakso':         {pop:158052, gdp:34000,unem:10.5,capital:'Kouvola',     area:5588, density:28.3, forest:71,lakes:600, winter:-6.2,summerHigh:20.4,rain:580,snowDays:75, known:'Forestry and paper · Kotka maritime heritage · Langinkoski fishing lodge'},
+  'South Karelia':       {pop:126107, gdp:34500,unem:9.8, capital:'Lappeenranta',area:5327, density:23.7, forest:74,lakes:900, winter:-7.5,summerHigh:20.3,rain:560,snowDays:88, known:'Lake Saimaa system · glass art origins · Saimaa canal · eastern border region'},
+  'South Savo':          {pop:131688, gdp:30000,unem:9.8, capital:'Mikkeli',     area:14257,density:9.2,  forest:78,lakes:4500,winter:-8.5,summerHigh:20.0,rain:545,snowDays:95, known:'Heart of the Lake District · Lake Saimaa · summer cottage culture'},
+  'North Savo':          {pop:248363, gdp:32000,unem:9.4, capital:'Kuopio',      area:16768,density:14.8, forest:76,lakes:3200,winter:-9.5,summerHigh:19.8,rain:535,snowDays:105,known:'Healthcare technology · food industry · Puijo observation tower · KuopioHealth'},
+  'North Karelia':       {pop:162294, gdp:29000,unem:11.2,capital:'Joensuu',     area:17761,density:9.1,  forest:80,lakes:2800,winter:-10.8,summerHigh:19.6,rain:520,snowDays:110,known:'Eastern wilderness · Koli National Park · Orthodox culture · Ilomantsi'},
+  'Central Finland':     {pop:272683, gdp:33500,unem:9.2, capital:'Jyväskylä',   area:16703,density:16.3, forest:74,lakes:3300,winter:-9.8,summerHigh:20.2,rain:548,snowDays:108,known:'Jyväskylä university · Alvar Aalto architecture · lake and forest recreation'},
+  'South Ostrobothnia':  {pop:191762, gdp:31500,unem:7.0, capital:'Seinäjoki',   area:13444,density:14.3, forest:58,lakes:800, winter:-9.8,summerHigh:20.2,rain:520,snowDays:105,known:"Farming flatlands · Provinssi Rock · Tango festival · fiercely independent culture"},
+  'Ostrobothnia':        {pop:179555, gdp:37000,unem:5.8, capital:'Vaasa',       area:7932, density:22.6, forest:51,lakes:400, winter:-9.0,summerHigh:20.2,rain:502,snowDays:95, known:'Energy technology cluster · Wärtsilä · bilingual Swedish-Finnish · archipelago coast'},
+  'Central Ostrobothnia':{pop:67736,  gdp:31000,unem:7.2, capital:'Kokkola',     area:6463, density:10.5, forest:61,lakes:300, winter:-10.5,summerHigh:19.8,rain:492,snowDays:108,known:'Chemical industry hub · Kokkola Industrial Park · Perho river valley'},
+  'North Ostrobothnia':  {pop:417939, gdp:34000,unem:8.8, capital:'Oulu',        area:37149,density:11.3, forest:67,lakes:1800,winter:-12.0,summerHigh:18.5,rain:455,snowDays:125,known:"Oulu tech ecosystem · Nokia R&D heritage · Northern Lights · Hailuoto island"},
+  'Kainuu':              {pop:72818,  gdp:28000,unem:12.0,capital:'Kajaani',     area:21567,density:3.4,  forest:85,lakes:1900,winter:-14.5,summerHigh:18.3,rain:442,snowDays:135,known:'Wilderness tourism · bear-watching safaris · Kuhmo Chamber Music · most forested region'},
+  'Lapland':             {pop:179893, gdp:31000,unem:9.6, capital:'Rovaniemi',   area:92674,density:1.9,  forest:69,lakes:2100,winter:-18.5,summerHigh:16.5,rain:432,snowDays:165,known:'Arctic · Northern Lights · Santa Claus Village · reindeer herding · midnight sun'},
+  'Åland':               {pop:30862,  gdp:50000,unem:3.1, capital:'Mariehamn',   area:1553, density:19.9, forest:55,lakes:80,  winter:-2.0,summerHigh:20.5,rain:582,snowDays:40,  known:'Autonomous demilitarised archipelago · Swedish-speaking · Viking Line · medieval churches'},
+};
+
+const NATL = {gdp:48300, unem:7.5};
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const HELSINKI_NORMALS = [-4.5,-5.1,-1.3,4.6,11.1,15.8,18.8,17.4,12.0,6.3,1.0,-2.8];
+const GRID = 'rgba(0,53,128,0.05)', TICK = '#4a5d72', TICKF = {size:9};
+
+const popVals = Object.values(REGIONS).map(r=>r.pop);
+const colScale = d3.scaleSequential([Math.min(...popVals), Math.max(...popVals)], d3.interpolateBlues);
+
+let currentRegion = 'Uusimaa';
+let activeTab = 'overview';
+let selectedEl = null;
+let charts = {};
+
+// ================================================================
+// LOAD REAL GEOJSON — NLS Finland 2023
+// ================================================================
+async function loadMap() {
+  const GEOJSON_URL = 'https://raw.githubusercontent.com/samilaine/hallinnollisetrajat/main/maakuntarajat.2023.json';
+  try {
+    const res = await fetch(GEOJSON_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const geojson = await res.json();
+    document.getElementById('loading-map').style.display = 'none';
+    drawMap(geojson);
+  } catch(e) {
+    document.getElementById('loading-map').textContent = 'Map unavailable (check connection)';
+    console.error('GeoJSON load error:', e);
+  }
+}
+
+function drawMap(geojson) {
+  const svg = d3.select('#finMap');
+  const W = 240, H = 460;
+
+  // D3 Mercator projection — fit all Finnish regions
+  const projection = d3.geoMercator().fitSize([W, H], geojson);
+  const path = d3.geoPath().projection(projection);
+  const tooltip = document.getElementById('tooltip');
+
+  geojson.features.forEach(feature => {
+    const natcode = String(feature.properties.NATCODE).padStart(2,'0');
+    const regionName = NATCODE_TO_NAME[natcode];
+    if (!regionName || !REGIONS[regionName]) return;
+
+    const r = REGIONS[regionName];
+    const fillColor = colScale(r.pop);
+
+    svg.append('path')
+      .datum(feature)
+      .attr('class','region-path')
+      .attr('d', path)
+      .attr('fill', fillColor)
+      .attr('stroke','rgba(255,255,255,0.4)')
+      .attr('stroke-width','0.6')
+      .attr('data-region', regionName)
+      .on('click', function(event) {
+        if (selectedEl) {
+          d3.select(selectedEl).attr('stroke','rgba(255,255,255,0.4)').attr('stroke-width','0.6');
+        }
+        selectedEl = this;
+        d3.select(this).attr('stroke','#f59e0b').attr('stroke-width','2');
+        selectRegion(regionName);
+      })
+      .on('mousemove', function(event) {
+        tooltip.style.opacity = '1';
+        tooltip.style.left = (event.clientX + 14) + 'px';
+        tooltip.style.top  = (event.clientY - 28) + 'px';
+        tooltip.innerHTML = '<strong>' + regionName + '</strong><br>Pop: ' +
+          r.pop.toLocaleString() + ' · Density: ' + r.density + '/km²';
+      })
+      .on('mouseleave', function() {
+        tooltip.style.opacity = '0';
+        if (this !== selectedEl) {
+          d3.select(this).attr('stroke','rgba(255,255,255,0.4)').attr('stroke-width','0.6');
+        }
+      });
+
+    // Label at centroid
+    const centroid = path.centroid(feature);
+    if (centroid && !isNaN(centroid[0])) {
+      const abbr = {
+        'Southwest Finland':'SW Finland','South Ostrobothnia':'S.Ostrobothnia',
+        'North Ostrobothnia':'N.Ostrobothnia','Central Ostrobothnia':'C.Ostrobothnia',
+        'South Karelia':'S.Karelia','North Karelia':'N.Karelia',
+        'Central Finland':'C.Finland','South Savo':'S.Savo','North Savo':'N.Savo',
+        'Kanta-Häme':'Kanta-Häme'
+      };
+      if (regionName !== 'Åland') {
+        svg.append('text')
+          .attr('class','region-label')
+          .attr('x', centroid[0])
+          .attr('y', centroid[1])
+          .text(abbr[regionName] || regionName);
+      }
+    }
+  });
+
+  // Select Uusimaa by default
+  const defaultEl = document.querySelector('[data-region="Uusimaa"]');
+  if (defaultEl) {
+    selectedEl = defaultEl;
+    d3.select(defaultEl).attr('stroke','#f59e0b').attr('stroke-width','2');
+  }
+  selectRegion('Uusimaa');
+}
+
+// ================================================================
+// REGION SELECTION
+// ================================================================
+function selectRegion(name) {
+  currentRegion = name;
+  const r = REGIONS[name];
+  document.getElementById('chipName').textContent = name;
+  document.getElementById('chipSub').textContent = r.capital + ' · ' + r.area.toLocaleString() + ' km²';
+  document.getElementById('sPop').textContent = r.pop >= 1e6 ? (r.pop/1e6).toFixed(2)+'M' : (r.pop/1000).toFixed(0)+'K';
+  document.getElementById('sPopT').textContent = 'density ' + r.density + '/km²';
+  document.getElementById('sGDP').textContent = '€' + (r.gdp/1000).toFixed(0) + 'K';
+  const gd = r.gdp - NATL.gdp;
+  document.getElementById('sGDPT').className = 'sc-sub ' + (gd>=0?'trend-up':'trend-dn');
+  document.getElementById('sGDPT').textContent = (gd>=0?'↑ ':'↓ ') + '€' + (Math.abs(gd)/1000).toFixed(0) + 'K vs natl';
+  document.getElementById('sUnem').textContent = r.unem + '%';
+  const ud = r.unem - NATL.unem;
+  document.getElementById('sUnemT').className = 'sc-sub ' + (ud<0?'trend-up':ud>0?'trend-dn':'trend-neu');
+  document.getElementById('sUnemT').textContent = (ud<0?'↓ lower':'↑ higher') + ' than 7.5%';
+  document.getElementById('sArea').textContent = r.area.toLocaleString();
+  // Fetch live weather for this region's capital city
+  fetchWeather(r.capital);
+  updateActiveTab();
+}
+
+function updateActiveTab() {
+  const r = REGIONS[currentRegion];
+  if (activeTab==='overview') updateOverview(r);
+  else if (activeTab==='economy') updateEconomy(r);
+  else if (activeTab==='society') updateSociety(r);
+  else if (activeTab==='climate') updateClimate(r);
+}
+
+function switchTab(tab, el) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+tab).classList.add('active');
+  updateActiveTab();
+}
+
+// ================================================================
+// PAGES
+// ================================================================
+function updateOverview(r) {
+  document.getElementById('ov-tag').textContent = currentRegion;
+  document.getElementById('knownText').textContent = '"' + r.known + '"';
+  document.getElementById('ovTable').innerHTML = [
+    ['Capital', r.capital],
+    ['Population', r.pop.toLocaleString() + ' (stat.fi 2023)'],
+    ['Area', r.area.toLocaleString() + ' km²'],
+    ['Pop density', r.density + ' /km²'],
+    ['GDP per capita', '€' + r.gdp.toLocaleString() + ' (Eurostat 2022)'],
+    ['Unemployment', r.unem + '% (EURES 2023)'],
+  ].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  document.getElementById('ovSrc').innerHTML = 'Sources: Statistics Finland · Eurostat · EURES';
+  document.getElementById('natureTable').innerHTML = [
+    ['Forest cover', r.forest + '% of area'],
+    ['Lakes', r.lakes.toLocaleString()],
+    ['Avg January', r.winter + '°C'],
+    ['Avg July high', r.summerHigh + '°C'],
+  ].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  dc('popChart');
+  const e = Object.entries(REGIONS).sort((a,b)=>b[1].pop-a[1].pop);
+  charts.popChart = new Chart(document.getElementById('popChart'), {
+    type:'bar',
+    data:{labels:e.map(([n])=>n.length>11?n.slice(0,11)+'…':n),
+      datasets:[{data:e.map(([,r])=>Math.round(r.pop/1000)),
+        backgroundColor:e.map(([n])=>n===currentRegion?'#f59e0b':'#85b7eb'),borderRadius:3,borderWidth:0}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:GRID},ticks:{color:TICK,font:TICKF,callback:v=>v+'K'}},
+              y:{grid:{display:false},ticks:{color:TICK,font:TICKF}}}}
+  });
+}
+
+function updateEconomy(r) {
+  dc('gdpChart'); dc('unemChart');
+  const eg = Object.entries(REGIONS).sort((a,b)=>b[1].gdp-a[1].gdp);
+  charts.gdpChart = new Chart(document.getElementById('gdpChart'), {
+    type:'bar',
+    data:{labels:eg.map(([n])=>n.length>11?n.slice(0,11)+'…':n),
+      datasets:[{data:eg.map(([,r])=>r.gdp),
+        backgroundColor:eg.map(([n])=>n===currentRegion?'#f59e0b':'#85b7eb'),borderRadius:3,borderWidth:0}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:GRID},ticks:{color:TICK,font:TICKF,callback:v=>'€'+(v/1000).toFixed(0)+'K'}},
+              y:{grid:{display:false},ticks:{color:TICK,font:TICKF}}}}
+  });
+  const eu = Object.entries(REGIONS).sort((a,b)=>a[1].unem-b[1].unem);
+  charts.unemChart = new Chart(document.getElementById('unemChart'), {
+    type:'bar',
+    data:{labels:eu.map(([n])=>n.length>11?n.slice(0,11)+'…':n),
+      datasets:[{data:eu.map(([,r])=>r.unem),
+        backgroundColor:eu.map(([,r])=>r.unem<=6?'#2da44e88':r.unem<=9?'#85b7eb':'#f09595'),borderRadius:3,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{color:TICK,font:TICKF,maxRotation:45}},
+              y:{grid:{color:GRID},ticks:{color:TICK,font:TICKF,callback:v=>v+'%'}}}}
+  });
+  document.getElementById('econTable').innerHTML = [
+    ['GDP per capita', '€' + r.gdp.toLocaleString()],
+    ['Unemployment', r.unem + '%'],
+    ['Population', r.pop.toLocaleString()],
+    ['Area', r.area.toLocaleString() + ' km²'],
+    ['Density', r.density + ' /km²'],
+  ].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  const compHtml = (label,val,natl,fmt,lower) => {
+    const p=Math.min(100,(val/Math.max(val,natl))*100), np=Math.min(100,(natl/Math.max(val,natl))*100);
+    const ok=lower?val<natl:val>natl, col=ok?'#2da44e':'#c0392b';
+    const dv=fmt==='eur'?'€'+(val/1000).toFixed(0)+'K':val.toFixed(1)+'%';
+    const dn=fmt==='eur'?'€'+(natl/1000).toFixed(0)+'K':natl+'%';
+    return `<div class="comp-row"><div class="comp-label">${label}</div><div class="comp-bars">
+      <div class="comp-bar-wrap"><div class="comp-bar" style="width:${p}%;background:${col}"></div><div class="comp-val">${dv}</div></div>
+      <div class="comp-bar-wrap"><div class="comp-bar" style="width:${np}%;background:#aab8cc"></div><div class="comp-val" style="color:#8fa0b4">natl ${dn}</div></div>
+    </div></div>`;
+  };
+  document.getElementById('compRows').innerHTML = compHtml('GDP/capita',r.gdp,NATL.gdp,'eur',false) + compHtml('Unemployment',r.unem,NATL.unem,'pct',true);
+  const su = Object.entries(REGIONS).sort((a,b)=>a[1].unem-b[1].unem);
+  const mu = Math.max(...su.map(([,r])=>r.unem));
+  document.getElementById('unemRank').innerHTML = su.map(([n,x],i)=>`
+    <div class="rank-item" style="${n===currentRegion?'background:var(--blue-faint);':''}">
+      <div class="rank-num">${i+1}</div>
+      <div class="rank-name" style="${n===currentRegion?'font-weight:500;color:var(--blue)':''}">${n}</div>
+      <div style="flex:1"><div class="rank-bar" style="width:${(x.unem/mu*100).toFixed(0)}%;background:${x.unem<=6?'#2da44e':x.unem<=9?'#1a6fc4':'#c0392b'}"></div></div>
+      <div class="rank-val">${x.unem}%</div>
+    </div>`).join('');
+}
+
+function updateSociety(r) {
+  dc('densChart');
+  document.getElementById('demogTable').innerHTML = [
+    ['Population', r.pop.toLocaleString()],
+    ['Area', r.area.toLocaleString() + ' km²'],
+    ['Density', r.density + ' /km²'],
+    ['Capital', r.capital],
+    ['GDP/capita', '€' + r.gdp.toLocaleString()],
+    ['Forest cover', r.forest + '%'],
+    ['Lakes', r.lakes.toLocaleString()],
+  ].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  const ed = Object.entries(REGIONS).sort((a,b)=>b[1].density-a[1].density);
+  charts.densChart = new Chart(document.getElementById('densChart'), {
+    type:'bar',
+    data:{labels:ed.map(([n])=>n.length>10?n.slice(0,10)+'…':n),
+      datasets:[{data:ed.map(([,r])=>r.density),
+        backgroundColor:ed.map(([n])=>n===currentRegion?'#f59e0b':'#85b7eb'),borderRadius:3,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{color:TICK,font:{size:8},maxRotation:45}},
+              y:{grid:{color:GRID},ticks:{color:TICK,font:TICKF,callback:v=>v+'/km²'}}}}
+  });
+}
+
+function updateClimate(r) {
+  dc('climChart'); dc('winterChart');
+  document.getElementById('climTag').textContent = currentRegion;
+  const offset = r.winter - HELSINKI_NORMALS[0];
+  const regTemps = HELSINKI_NORMALS.map((t,i)=>+(t+(i>=5&&i<=8?r.summerHigh-18.8:offset)).toFixed(1));
+  charts.climChart = new Chart(document.getElementById('climChart'), {
+    type:'line',
+    data:{labels:MONTHS,datasets:[
+      {label:'Helsinki (FMI)',data:HELSINKI_NORMALS,borderColor:'#003580',borderWidth:2.5,pointRadius:3,tension:.4,backgroundColor:'rgba(0,53,128,0.07)',fill:true},
+      {label:currentRegion,data:regTemps,borderColor:'#f59e0b',borderWidth:2,pointRadius:3,tension:.4,fill:false,borderDash:[5,3]},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{font:{size:10},boxWidth:12}}},
+      scales:{x:{grid:{display:false},ticks:{color:TICK,font:{size:10}}},
+              y:{grid:{color:GRID},ticks:{color:TICK,font:{size:10},callback:v=>v+'°C'}}}}
+  });
+  document.getElementById('climTable').innerHTML = [
+    ['Avg January', r.winter + '°C'],
+    ['Avg July high', r.summerHigh + '°C'],
+    ['Annual rain', r.rain + ' mm (est)'],
+    ['Snow days/yr', r.snowDays + ' (est)'],
+    ['Climate zone', r.winter<-12?'Subarctic (Dfc)':r.winter<-7?'Humid continental':'Humid continental'],
+  ].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  const ew = Object.entries(REGIONS).sort((a,b)=>a[1].winter-b[1].winter);
+  charts.winterChart = new Chart(document.getElementById('winterChart'), {
+    type:'bar',
+    data:{labels:ew.map(([n])=>n.length>10?n.slice(0,10)+'…':n),
+      datasets:[{data:ew.map(([,r])=>r.winter),
+        backgroundColor:ew.map(([n])=>n===currentRegion?'#f59e0b':'#85b7eb'),borderRadius:3,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{color:TICK,font:{size:9},maxRotation:45}},
+              y:{grid:{color:GRID},ticks:{color:TICK,font:{size:9},callback:v=>v+'°C'}}}}
+  });
+}
+
+function dc(id) { if(charts[id]){charts[id].destroy();delete charts[id];} }
+
+// ================================================================
+// LIVE WEATHER — updates for each region capital automatically
+// Coordinates: Open-Meteo accepts lat/lon for any location
+// ================================================================
+
+// Capital city coordinates for all 19 regional capitals
+// Source: Wikipedia / Finnish Meteorological Institute station locations
+const CITY_COORDS = {
+  'Helsinki':     { lat: 60.1699, lon: 24.9384 },
+  'Turku':        { lat: 60.4518, lon: 22.2666 },
+  'Pori':         { lat: 61.4851, lon: 21.7973 },
+  'Hämeenlinna':  { lat: 60.9965, lon: 24.4647 },
+  'Tampere':      { lat: 61.4978, lon: 23.7610 },
+  'Lahti':        { lat: 60.9827, lon: 25.6612 },
+  'Kouvola':      { lat: 60.8679, lon: 26.7042 },
+  'Lappeenranta': { lat: 61.0587, lon: 28.1887 },
+  'Mikkeli':      { lat: 61.6887, lon: 27.2721 },
+  'Kuopio':       { lat: 62.8980, lon: 27.6782 },
+  'Joensuu':      { lat: 62.6010, lon: 29.7638 },
+  'Jyväskylä':    { lat: 62.2415, lon: 25.7209 },
+  'Seinäjoki':    { lat: 62.7902, lon: 22.8403 },
+  'Vaasa':        { lat: 63.0960, lon: 21.6158 },
+  'Kokkola':      { lat: 63.8376, lon: 23.1306 },
+  'Oulu':         { lat: 65.0121, lon: 25.4651 },
+  'Kajaani':      { lat: 64.2274, lon: 27.7330 },
+  'Rovaniemi':    { lat: 66.5039, lon: 25.7294 },
+  'Mariehamn':    { lat: 60.0969, lon: 19.9348 },
+};
+
+const WX_ICONS = {
+  0:'☀️',1:'🌤️',2:'⛅',3:'☁️',
+  45:'🌫️',48:'🌫️',
+  51:'🌦️',53:'🌦️',55:'🌧️',
+  61:'🌧️',63:'🌧️',65:'🌧️',
+  71:'🌨️',73:'❄️',75:'❄️',77:'🌨️',
+  80:'🌦️',81:'🌧️',82:'🌧️',
+  85:'🌨️',86:'❄️',
+  95:'⛈️',96:'⛈️',99:'⛈️'
+};
+const WX_DESCS = {
+  0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',
+  45:'Fog',48:'Icy fog',
+  51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',
+  61:'Light rain',63:'Rain',65:'Heavy rain',
+  71:'Light snow',73:'Snowfall',75:'Heavy snow',77:'Snow grains',
+  80:'Rain showers',81:'Rain showers',82:'Violent showers',
+  85:'Snow showers',86:'Heavy snow showers',
+  95:'Thunderstorm',96:'Thunderstorm + hail',99:'Thunderstorm + hail'
+};
+
+async function fetchWeather(capital) {
+  // If no capital passed, use currently selected region's capital
+  const city = capital || REGIONS[currentRegion].capital;
+  const coords = CITY_COORDS[city];
+
+  if (!coords) {
+    console.warn('No coordinates for:', city);
+    return;
+  }
+
+  // Update UI labels immediately so user sees the city changing
+  document.getElementById('sWeatherCity').textContent = city;
+  document.getElementById('weatherCardCity').textContent = city + ', ' + currentRegion;  document.getElementById('weatherWidget').innerHTML =
+    '<div style="font-size:11px;color:var(--text3);padding:1rem;text-align:center">Fetching weather for ' + city + '…</div>';
+
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast'
+      + '?latitude=' + coords.lat
+      + '&longitude=' + coords.lon
+      + '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m'
+      + '&wind_speed_unit=ms&forecast_days=1&timezone=Europe%2FHelsinki';
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const c = data.current;
+    const code = c.weather_code;
+    const t = Math.round(c.temperature_2m);
+    const desc = WX_DESCS[code] || 'Unknown';
+    const icon = WX_ICONS[code] || '🌡️';
+
+    document.getElementById('sWeather').textContent = (t > 0 ? '+' : '') + t + '°C';
+    document.getElementById('sWeatherT').textContent = desc + ' · ' + city;
+
+    // Temp colour: blue=cold, amber=mild, red=warm
+    const tempColor = t < 0 ? '#1a6fc4' : t < 15 ? '#003580' : '#c0392b';
+
+    document.getElementById('weatherWidget').innerHTML = `
+      <div class="weather-box">
+        <div class="w-icon">${icon}</div>
+        <div class="w-temp" style="color:${tempColor}">${t > 0 ? '+' : ''}${t}°C</div>
+        <div class="w-desc">${desc}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">${city} · ${coords.lat.toFixed(2)}°N ${coords.lon.toFixed(2)}°E</div>
+        <div class="w-row">
+          <div>
+            <div class="w-detail-label">Humidity</div>
+            <div class="w-detail-val">${c.relative_humidity_2m}%</div>
+          </div>
+          <div>
+            <div class="w-detail-label">Wind</div>
+            <div class="w-detail-val">${Math.round(c.wind_speed_10m)} m/s</div>
+          </div>
+          <div>
+            <div class="w-detail-label">Feels like</div>
+            <div class="w-detail-val">${Math.round(c.apparent_temperature)}°C</div>
+          </div>
+        </div>
+      </div>`;
+
+  } catch(e) {
+    document.getElementById('sWeather').textContent = '—';
+    document.getElementById('sWeatherT').textContent = 'Unavailable';
+    document.getElementById('weatherWidget').innerHTML =
+      '<div style="font-size:11px;color:var(--text3);padding:1rem;text-align:center">Weather unavailable for ' + city + '<br><small>Check internet connection</small></div>';
+  }
+}
+
+// Clock
+function tick(){document.getElementById('clock').textContent='Helsinki · '+new Date().toLocaleString('en-GB',{timeZone:'Europe/Helsinki',weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});}
+tick(); setInterval(tick,1000);
+
+// Init
+loadMap();
+// Weather is fetched automatically when selectRegion fires after map loads
+// Auto-refresh weather every 5 minutes for current region
+setInterval(() => fetchWeather(REGIONS[currentRegion].capital), 300000);
+</script>
+</body>
+</html>
