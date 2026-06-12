@@ -445,6 +445,7 @@ function selectRegion(name) {
   document.getElementById('sUnemT').textContent = (ud<0?'↓ lower':'↑ higher') + ' than 7.5%';
   document.getElementById('sArea').textContent = r.area.toLocaleString();
   // Fetch live weather for this region's capital city
+  console.log('selectRegion: calling fetchWeather for', r.capital);
   fetchWeather(r.capital);
   updateActiveTab();
 }
@@ -662,19 +663,38 @@ const WX_DESCS = {
 };
 
 async function fetchWeather(capital) {
-  // If no capital passed, use currently selected region's capital
   const city = capital || REGIONS[currentRegion].capital;
   const coords = CITY_COORDS[city];
 
+  // Guard — if no coords, log clearly and show error
   if (!coords) {
-    console.warn('No coordinates for:', city);
+    console.error('fetchWeather: no coordinates found for city:', city);
+    const el = document.getElementById('sWeather');
+    if (el) el.textContent = '—';
     return;
   }
 
-  // Update UI labels immediately so user sees the city changing
-  document.getElementById('sWeatherCity').textContent = city;
-  document.getElementById('weatherCardCity').textContent = city + ', ' + currentRegion;  document.getElementById('weatherWidget').innerHTML =
-    '<div style="font-size:11px;color:var(--text3);padding:1rem;text-align:center">Fetching weather for ' + city + '…</div>';
+  console.log('fetchWeather: fetching for', city, coords);
+
+  // Update scorecard label
+  const cityEl = document.getElementById('sWeatherCity');
+  if (cityEl) cityEl.textContent = city;
+
+  const sWeatherEl = document.getElementById('sWeather');
+  if (sWeatherEl) sWeatherEl.textContent = '…';
+
+  const sWeatherTEl = document.getElementById('sWeatherT');
+  if (sWeatherTEl) sWeatherTEl.textContent = 'Fetching ' + city + '…';
+
+  // Update weather card title if visible
+  const cardCityEl = document.getElementById('weatherCardCity');
+  if (cardCityEl) cardCityEl.textContent = city + ', ' + currentRegion;
+
+  // Show loading in weather widget if visible
+  const widgetEl = document.getElementById('weatherWidget');
+  if (widgetEl) {
+    widgetEl.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:1rem;text-align:center">Fetching weather for ' + city + '…</div>';
+  }
 
   try {
     const url = 'https://api.open-meteo.com/v1/forecast'
@@ -683,6 +703,7 @@ async function fetchWeather(capital) {
       + '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m'
       + '&wind_speed_unit=ms&forecast_days=1&timezone=Europe%2FHelsinki';
 
+    console.log('fetchWeather: calling', url);
     const res = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
@@ -691,40 +712,48 @@ async function fetchWeather(capital) {
     const t = Math.round(c.temperature_2m);
     const desc = WX_DESCS[code] || 'Unknown';
     const icon = WX_ICONS[code] || '🌡️';
-
-    document.getElementById('sWeather').textContent = (t > 0 ? '+' : '') + t + '°C';
-    document.getElementById('sWeatherT').textContent = desc + ' · ' + city;
-
-    // Temp colour: blue=cold, amber=mild, red=warm
     const tempColor = t < 0 ? '#1a6fc4' : t < 15 ? '#003580' : '#c0392b';
 
-    document.getElementById('weatherWidget').innerHTML = `
-      <div class="weather-box">
-        <div class="w-icon">${icon}</div>
-        <div class="w-temp" style="color:${tempColor}">${t > 0 ? '+' : ''}${t}°C</div>
-        <div class="w-desc">${desc}</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:3px">${city} · ${coords.lat.toFixed(2)}°N ${coords.lon.toFixed(2)}°E</div>
-        <div class="w-row">
-          <div>
-            <div class="w-detail-label">Humidity</div>
-            <div class="w-detail-val">${c.relative_humidity_2m}%</div>
+    console.log('fetchWeather: got', t, '°C,', desc, 'for', city);
+
+    // Always update scorecard — visible on every tab
+    if (sWeatherEl) sWeatherEl.textContent = (t > 0 ? '+' : '') + t + '°C';
+    if (sWeatherTEl) sWeatherTEl.textContent = desc + ' · ' + city;
+
+    // Update weather card widget (only visible on Overview tab but always update)
+    const widget = document.getElementById('weatherWidget');
+    if (widget) {
+      widget.innerHTML = `
+        <div class="weather-box">
+          <div class="w-icon">${icon}</div>
+          <div class="w-temp" style="color:${tempColor}">${t > 0 ? '+' : ''}${t}°C</div>
+          <div class="w-desc">${desc}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">${city} · ${coords.lat.toFixed(2)}°N ${coords.lon.toFixed(2)}°E</div>
+          <div class="w-row">
+            <div>
+              <div class="w-detail-label">Humidity</div>
+              <div class="w-detail-val">${c.relative_humidity_2m}%</div>
+            </div>
+            <div>
+              <div class="w-detail-label">Wind</div>
+              <div class="w-detail-val">${Math.round(c.wind_speed_10m)} m/s</div>
+            </div>
+            <div>
+              <div class="w-detail-label">Feels like</div>
+              <div class="w-detail-val">${Math.round(c.apparent_temperature)}°C</div>
+            </div>
           </div>
-          <div>
-            <div class="w-detail-label">Wind</div>
-            <div class="w-detail-val">${Math.round(c.wind_speed_10m)} m/s</div>
-          </div>
-          <div>
-            <div class="w-detail-label">Feels like</div>
-            <div class="w-detail-val">${Math.round(c.apparent_temperature)}°C</div>
-          </div>
-        </div>
-      </div>`;
+        </div>`;
+    }
 
   } catch(e) {
-    document.getElementById('sWeather').textContent = '—';
-    document.getElementById('sWeatherT').textContent = 'Unavailable';
-    document.getElementById('weatherWidget').innerHTML =
-      '<div style="font-size:11px;color:var(--text3);padding:1rem;text-align:center">Weather unavailable for ' + city + '<br><small>Check internet connection</small></div>';
+    console.error('fetchWeather error for', city, ':', e.message);
+    if (sWeatherEl) sWeatherEl.textContent = '—';
+    if (sWeatherTEl) sWeatherTEl.textContent = 'Unavailable · ' + city;
+    const widget = document.getElementById('weatherWidget');
+    if (widget) {
+      widget.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:1rem;text-align:center">Weather unavailable for ' + city + '<br><small>' + e.message + '</small></div>';
+    }
   }
 }
 
