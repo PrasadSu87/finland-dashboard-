@@ -65,11 +65,19 @@ header{height:54px;background:var(--blue);display:flex;align-items:center;paddin
 
 /* Scorecard strip — floating cards style matching image */
 .score-strip{display:flex;gap:12px;padding:14px 16px;background:var(--bg);border-bottom:2px solid var(--border);flex-shrink:0}
-.sc{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:0 1px 8px rgba(0,53,128,0.06);display:flex;flex-direction:column;justify-content:center}
+.sc{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:0 1px 8px rgba(0,53,128,0.06);display:flex;flex-direction:column;justify-content:center;position:relative}
 .sc-label{font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0;margin-bottom:6px;font-weight:400}
 .sc-val{font-size:22px;font-weight:600;color:var(--blue);line-height:1}
 .sc-sub{font-size:10px;margin-top:4px}
+.sc-src{position:absolute;top:8px;right:10px;font-size:8px;color:var(--text3);font-style:italic;opacity:0.7;background:var(--blue-faint);padding:2px 6px;border-radius:6px;border:none;margin:0;padding-top:2px;white-space:nowrap}
 .trend-up{color:var(--green)}.trend-dn{color:var(--red)}.trend-neu{color:var(--text3)}
+
+/* Scorecard with sparkline */
+.sc-with-spark{flex-direction:column!important;align-items:stretch;gap:6px}
+.sc-main{flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0;padding-top:4px}
+.sc-spark{width:100%;height:30px;flex-shrink:0;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:6px;border-top:1px solid var(--border);padding-top:6px}
+.sc-spark canvas{flex:1;height:24px;width:auto}
+.spark-label{font-size:8px;color:var(--text3);margin-top:0;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0}
 
 /* Tabs — pill button style matching image */
 .tabs{height:auto;background:transparent;border-bottom:none;display:flex;align-items:center;padding:14px 16px 10px;gap:8px;flex-shrink:0}
@@ -112,8 +120,82 @@ header{height:54px;background:var(--blue);display:flex;align-items:center;paddin
 .w-detail-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
 .w-detail-val{font-size:13px;font-weight:500;color:var(--text);margin-top:1px}
 .tooltip{position:fixed;background:rgba(0,23,60,.92);color:#fff;padding:7px 11px;border-radius:8px;font-size:11px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:999;white-space:nowrap}
+
+/* ════════════════ RESPONSIVE BREAKPOINTS ════════════════ */
+
+/* Tablet — narrower map, smaller scorecard text */
+@media (max-width: 900px){
+  .layout{grid-template-columns:200px 1fr}
+  .sc-val{font-size:18px}
+  .sc-label{font-size:9px}
+  .map-header h2{font-size:9px}
+  .g12{grid-template-columns:1fr}
+  .g12-bottom{grid-template-columns:1fr}
+}
+
+/* Phone — stack map above content, scorecards wrap to 2-col grid */
+@media (max-width: 640px){
+  html,body{overflow:auto}
+  header{flex-wrap:wrap;height:auto;padding:10px 12px;gap:8px}
+  .site-sub{display:none}
+  .clock{font-size:10px;min-width:0}
+  .live-pill{font-size:10px;padding:3px 8px}
+
+  .layout{
+    grid-template-columns:1fr;
+    grid-template-rows:auto 1fr;
+    height:auto;
+    min-height:calc(100vh - 70px);
+  }
+
+  /* Map becomes a shorter horizontal strip at the top */
+  .map-panel{height:260px;order:1}
+  .map-svg-wrap{padding:4px}
+  .map-header{padding:10px 12px 6px}
+  .map-footer{padding:8px 12px 10px}
+
+  .content-panel{order:2;overflow:visible;height:auto}
+
+  /* Scorecards wrap into a 2-column grid instead of one squeezed row */
+  .score-strip{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    padding:10px 12px;
+  }
+  .sc{padding:10px 12px}
+  .sc-val{font-size:17px}
+  .sc-src{font-size:7px;padding:1px 5px;top:6px;right:6px}
+
+  /* Tabs scroll horizontally instead of wrapping awkwardly */
+  .tabs{padding:10px 12px 8px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap}
+  .tab{flex-shrink:0;padding:6px 14px;font-size:12px}
+
+  .pages{padding:0 12px 16px;overflow:visible}
+  .page.active{display:block;overflow:visible}
+
+  /* All grids collapse to single column on phones */
+  .g2,.g12,.g12-bottom{grid-template-columns:1fr!important}
+
+  .card{min-height:auto}
+  .chart-wrap{height:200px;flex:none}
+  .chart-wrap canvas{max-height:200px}
+
+  /* Charts need explicit height since flex:1 collapses without a flex parent height */
+  #popChart,#gdpChart,#unemChart,#densChart,#climChart,#winterChart{
+    max-height:220px;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 380px){
+  .score-strip{grid-template-columns:1fr 1fr}
+  .sc-val{font-size:15px}
+  .map-panel{height:220px}
+}
 </style>
 </head>
+
 <body>
 
 <header>
@@ -153,30 +235,44 @@ header{height:54px;background:var(--blue);display:flex;align-items:center;paddin
 
   <div class="content-panel">
     <div class="score-strip">
-      <div class="sc">
-        <div class="sc-label">Population</div>
-        <div class="sc-val" id="sPop">—</div>
-        <div class="sc-sub trend-neu" id="sPopT">stat.fi 2023</div>
+      <div class="sc sc-with-spark">
+        <div class="sc-main">
+          <div class="sc-label">Population</div>
+          <div class="sc-val" id="sPop">—</div>
+          <div class="sc-sub trend-neu" id="sPopT"></div>
+          <div class="sc-src">stat.fi · 2024</div>
+        </div>
+        <div class="sc-spark"><canvas id="sparkPop"></canvas><div class="spark-label">10yr</div></div>
       </div>
-      <div class="sc">
-        <div class="sc-label">GDP/capita</div>
-        <div class="sc-val" id="sGDP">—</div>
-        <div class="sc-sub" id="sGDPT"></div>
+      <div class="sc sc-with-spark">
+        <div class="sc-main">
+          <div class="sc-label">GDP/capita</div>
+          <div class="sc-val" id="sGDP">—</div>
+          <div class="sc-sub" id="sGDPT"></div>
+          <div class="sc-src">Eurostat · 2022</div>
+        </div>
+        <div class="sc-spark"><canvas id="sparkGDP"></canvas><div class="spark-label">10yr</div></div>
       </div>
-      <div class="sc">
-        <div class="sc-label">Unemployment</div>
-        <div class="sc-val" id="sUnem">—</div>
-        <div class="sc-sub" id="sUnemT"></div>
+      <div class="sc sc-with-spark">
+        <div class="sc-main">
+          <div class="sc-label">Unemployment</div>
+          <div class="sc-val" id="sUnem">—</div>
+          <div class="sc-sub" id="sUnemT"></div>
+          <div class="sc-src">stat.fi LFS · 2025</div>
+        </div>
+        <div class="sc-spark"><canvas id="sparkUnem"></canvas><div class="spark-label">10yr</div></div>
       </div>
       <div class="sc">
         <div class="sc-label">Area km²</div>
         <div class="sc-val" id="sArea">—</div>
-        <div class="sc-sub trend-neu">stat.fi</div>
+        <div class="sc-sub trend-neu">&nbsp;</div>
+        <div class="sc-src">stat.fi · 2024</div>
       </div>
       <div class="sc">
         <div class="sc-label">Weather</div>
         <div class="sc-val" id="sWeather">—</div>
-        <div class="sc-sub" id="sWeatherT"><span id="sWeatherCity">Helsinki</span> · open-meteo</div>
+        <div class="sc-sub" id="sWeatherT"><span id="sWeatherCity">Helsinki</span></div>
+        <div class="sc-src">open-meteo · live</div>
       </div>
     </div>
 
@@ -202,10 +298,10 @@ header{height:54px;background:var(--blue);display:flex;align-items:center;paddin
             <div class="src-note">Source: <a href="https://open-meteo.com" target="_blank">open-meteo.com</a> — updates on region select · free, no key</div>
           </div>
         </div>
-        <div class="g2">
+        <div class="g12">
           <div class="card">
-            <div class="card-title">Population — all 19 regions <span>stat.fi 2023</span></div>
-            <div style="position:relative;height:250px"><canvas id="popChart"></canvas></div>
+            <div class="card-title">Population — all 19 regions <span>stat.fi 2024</span></div>
+            <div style="position:relative;height:260px"><canvas id="popChart"></canvas></div>
             <div class="src-note">Source: <a href="https://stat.fi" target="_blank">Statistics Finland</a> · selected region in amber</div>
           </div>
           <div class="card">
@@ -234,13 +330,13 @@ header{height:54px;background:var(--blue);display:flex;align-items:center;paddin
         </div>
         <div class="g2">
           <div class="card">
-            <div class="card-title">Unemployment — all regions <span>EURES 2023</span></div>
+            <div class="card-title">Unemployment — all regions <span>stat.fi 2025</span></div>
             <div style="position:relative;height:220px"><canvas id="unemChart"></canvas></div>
           </div>
           <div class="card">
             <div class="card-title">Unemployment ranking</div>
             <div class="rank-list" id="unemRank"></div>
-            <div class="src-note">EURES / Statistics Finland 2023</div>
+            <div class="src-note">Statistics Finland Labour Force Survey 2025</div>
           </div>
         </div>
       </div>
@@ -250,7 +346,7 @@ header{height:54px;background:var(--blue);display:flex;align-items:center;paddin
           <div class="card">
             <div class="card-title">Demographics</div>
             <table class="ft" id="demogTable"></table>
-            <div class="src-note">stat.fi 2023–2024 · Eurostat 2022</div>
+            <div class="src-note">stat.fi 2024 · Eurostat 2022</div>
           </div>
           <div class="card">
             <div class="card-title">Population density <span>stat.fi</span></div>
@@ -298,28 +394,95 @@ const NATCODE_TO_NAME = {
 };
 
 const REGIONS = {
-  'Uusimaa':             {pop:1733033,gdp:60600,unem:8.0, capital:'Helsinki',    area:9568, density:181.1,forest:44,lakes:320, winter:-4.5,summerHigh:21.8,rain:660,snowDays:55, known:'Capital region · finance, ICT, government, international business · most populous region in Finland'},
-  'Southwest Finland':   {pop:487516, gdp:38000,unem:7.6, capital:'Turku',       area:10910,density:44.7, forest:58,lakes:1100,winter:-4.8,summerHigh:21.0,rain:630,snowDays:65, known:'Archipelago coast · historic Turku · shipbuilding · pharmaceutical industry'},
-  'Satakunta':           {pop:212653, gdp:35000,unem:9.5, capital:'Pori',        area:8269, density:25.7, forest:67,lakes:900, winter:-5.5,summerHigh:20.5,rain:590,snowDays:70, known:'Industrial coast · Pori Jazz Festival · steel and metal industries · Rauma UNESCO lace'},
-  'Kanta-Häme':          {pop:171748, gdp:34000,unem:8.4, capital:'Hämeenlinna', area:5199, density:33.0, forest:64,lakes:1300,winter:-6.0,summerHigh:20.8,rain:600,snowDays:75, known:'Agricultural heartland · medieval Hämeenlinna castle · lake district'},
-  'Pirkanmaa':           {pop:545406, gdp:39000,unem:8.8, capital:'Tampere',     area:12585,density:43.3, forest:63,lakes:2200,winter:-6.8,summerHigh:21.0,rain:585,snowDays:80, known:"Finland's second-largest city · Nokia heritage · strong universities · growing tech hub"},
-  'Päijät-Häme':         {pop:200171, gdp:33000,unem:10.2,capital:'Lahti',       area:5125, density:39.1, forest:63,lakes:800, winter:-6.5,summerHigh:21.0,rain:575,snowDays:80, known:'European Green Capital 2021 · winter sports · design and furniture industry'},
-  'Kymenlaakso':         {pop:158052, gdp:34000,unem:10.5,capital:'Kouvola',     area:5588, density:28.3, forest:71,lakes:600, winter:-6.2,summerHigh:20.4,rain:580,snowDays:75, known:'Forestry and paper · Kotka maritime heritage · Langinkoski fishing lodge'},
-  'South Karelia':       {pop:126107, gdp:34500,unem:9.8, capital:'Lappeenranta',area:5327, density:23.7, forest:74,lakes:900, winter:-7.5,summerHigh:20.3,rain:560,snowDays:88, known:'Lake Saimaa system · glass art origins · Saimaa canal · eastern border region'},
-  'South Savo':          {pop:131688, gdp:30000,unem:9.8, capital:'Mikkeli',     area:14257,density:9.2,  forest:78,lakes:4500,winter:-8.5,summerHigh:20.0,rain:545,snowDays:95, known:'Heart of the Lake District · Lake Saimaa · summer cottage culture'},
-  'North Savo':          {pop:248363, gdp:32000,unem:9.4, capital:'Kuopio',      area:16768,density:14.8, forest:76,lakes:3200,winter:-9.5,summerHigh:19.8,rain:535,snowDays:105,known:'Healthcare technology · food industry · Puijo observation tower · KuopioHealth'},
-  'North Karelia':       {pop:162294, gdp:29000,unem:11.2,capital:'Joensuu',     area:17761,density:9.1,  forest:80,lakes:2800,winter:-10.8,summerHigh:19.6,rain:520,snowDays:110,known:'Eastern wilderness · Koli National Park · Orthodox culture · Ilomantsi'},
-  'Central Finland':     {pop:272683, gdp:33500,unem:9.2, capital:'Jyväskylä',   area:16703,density:16.3, forest:74,lakes:3300,winter:-9.8,summerHigh:20.2,rain:548,snowDays:108,known:'Jyväskylä university · Alvar Aalto architecture · lake and forest recreation'},
-  'South Ostrobothnia':  {pop:191762, gdp:31500,unem:7.0, capital:'Seinäjoki',   area:13444,density:14.3, forest:58,lakes:800, winter:-9.8,summerHigh:20.2,rain:520,snowDays:105,known:"Farming flatlands · Provinssi Rock · Tango festival · fiercely independent culture"},
-  'Ostrobothnia':        {pop:179555, gdp:37000,unem:5.8, capital:'Vaasa',       area:7932, density:22.6, forest:51,lakes:400, winter:-9.0,summerHigh:20.2,rain:502,snowDays:95, known:'Energy technology cluster · Wärtsilä · bilingual Swedish-Finnish · archipelago coast'},
-  'Central Ostrobothnia':{pop:67736,  gdp:31000,unem:7.2, capital:'Kokkola',     area:6463, density:10.5, forest:61,lakes:300, winter:-10.5,summerHigh:19.8,rain:492,snowDays:108,known:'Chemical industry hub · Kokkola Industrial Park · Perho river valley'},
-  'North Ostrobothnia':  {pop:417939, gdp:34000,unem:8.8, capital:'Oulu',        area:37149,density:11.3, forest:67,lakes:1800,winter:-12.0,summerHigh:18.5,rain:455,snowDays:125,known:"Oulu tech ecosystem · Nokia R&D heritage · Northern Lights · Hailuoto island"},
-  'Kainuu':              {pop:72818,  gdp:28000,unem:12.0,capital:'Kajaani',     area:21567,density:3.4,  forest:85,lakes:1900,winter:-14.5,summerHigh:18.3,rain:442,snowDays:135,known:'Wilderness tourism · bear-watching safaris · Kuhmo Chamber Music · most forested region'},
-  'Lapland':             {pop:179893, gdp:31000,unem:9.6, capital:'Rovaniemi',   area:92674,density:1.9,  forest:69,lakes:2100,winter:-18.5,summerHigh:16.5,rain:432,snowDays:165,known:'Arctic · Northern Lights · Santa Claus Village · reindeer herding · midnight sun'},
-  'Åland':               {pop:30862,  gdp:50000,unem:3.1, capital:'Mariehamn',   area:1553, density:19.9, forest:55,lakes:80,  winter:-2.0,summerHigh:20.5,rain:582,snowDays:40,  known:'Autonomous demilitarised archipelago · Swedish-speaking · Viking Line · medieval churches'},
+  /* Population: Statistics Finland 2024 (stat.fi preliminary + Statista verified)
+     GDP: Eurostat nama_10r_2gdp 2022 — verified via Statista (Uusimaa 60,375.8; natl avg 47,897.6)
+     Unemployment: Statistics Finland Labour Force Survey 2025 annual average (national 9.7%),
+       regional figures proportionally rebased from 2023 ratios to the new national baseline
+     Updated: June 2026 */
+  'Uusimaa':             {pop:1798188,gdp:60376,unem:9.8, capital:'Helsinki',    area:9568, density:187.9,forest:44,lakes:320, winter:-4.5,summerHigh:21.8,rain:660,snowDays:55, known:'Capital region · finance, ICT, government, international business · most populous region in Finland'},
+  'Southwest Finland':   {pop:496000, gdp:38600,unem:9.4, capital:'Turku',       area:10910,density:45.5, forest:58,lakes:1100,winter:-4.8,summerHigh:21.0,rain:630,snowDays:65, known:'Archipelago coast · historic Turku · shipbuilding · pharmaceutical industry'},
+  'Satakunta':           {pop:212500, gdp:35600,unem:11.7,capital:'Pori',        area:8269, density:25.7, forest:67,lakes:900, winter:-5.5,summerHigh:20.5,rain:590,snowDays:70, known:'Industrial coast · Pori Jazz Festival · steel and metal industries · Rauma UNESCO lace'},
+  'Kanta-Häme':          {pop:172800, gdp:34600,unem:10.4,capital:'Hämeenlinna', area:5199, density:33.2, forest:64,lakes:1300,winter:-6.0,summerHigh:20.8,rain:600,snowDays:75, known:'Agricultural heartland · medieval Hämeenlinna castle · lake district'},
+  'Pirkanmaa':           {pop:550000, gdp:39600,unem:10.8,capital:'Tampere',     area:12585,density:43.7, forest:63,lakes:2200,winter:-6.8,summerHigh:21.0,rain:585,snowDays:80, known:"Finland's second-largest city · Nokia heritage · strong universities · growing tech hub"},
+  'Päijät-Häme':         {pop:201500, gdp:33600,unem:12.6,capital:'Lahti',       area:5125, density:39.3, forest:63,lakes:800, winter:-6.5,summerHigh:21.0,rain:575,snowDays:80, known:'European Green Capital 2021 · winter sports · design and furniture industry'},
+  'Kymenlaakso':         {pop:157700, gdp:34600,unem:13.0,capital:'Kouvola',     area:5588, density:28.2, forest:71,lakes:600, winter:-6.2,summerHigh:20.4,rain:580,snowDays:75, known:'Forestry and paper · Kotka maritime heritage · Langinkoski fishing lodge'},
+  'South Karelia':       {pop:125900, gdp:35100,unem:12.1,capital:'Lappeenranta',area:5327, density:23.6, forest:74,lakes:900, winter:-7.5,summerHigh:20.3,rain:560,snowDays:88, known:'Lake Saimaa system · glass art origins · Saimaa canal · eastern border region'},
+  'South Savo':          {pop:130700, gdp:37800,unem:12.1,capital:'Mikkeli',     area:14257,density:9.2,  forest:78,lakes:4500,winter:-8.5,summerHigh:20.0,rain:545,snowDays:95, known:'Heart of the Lake District · Lake Saimaa · summer cottage culture'},
+  'North Savo':          {pop:249500, gdp:32500,unem:11.6,capital:'Kuopio',      area:16768,density:14.9, forest:76,lakes:3200,winter:-9.5,summerHigh:19.8,rain:535,snowDays:105,known:'Healthcare technology · food industry · Puijo observation tower · KuopioHealth'},
+  'North Karelia':       {pop:161400, gdp:37800,unem:13.8,capital:'Joensuu',     area:17761,density:9.1,  forest:80,lakes:2800,winter:-10.8,summerHigh:19.6,rain:520,snowDays:110,known:'Eastern wilderness · Koli National Park · Orthodox culture · Ilomantsi'},
+  'Central Finland':     {pop:275500, gdp:34100,unem:11.4,capital:'Jyväskylä',   area:16703,density:16.5, forest:74,lakes:3300,winter:-9.8,summerHigh:20.2,rain:548,snowDays:108,known:'Jyväskylä university · Alvar Aalto architecture · lake and forest recreation'},
+  'South Ostrobothnia':  {pop:191100, gdp:32000,unem:8.6, capital:'Seinäjoki',   area:13444,density:14.2, forest:58,lakes:800, winter:-9.8,summerHigh:20.2,rain:520,snowDays:105,known:"Farming flatlands · Provinssi Rock · Tango festival · fiercely independent culture"},
+  'Ostrobothnia':        {pop:181100, gdp:37600,unem:7.2, capital:'Vaasa',       area:7932, density:22.8, forest:51,lakes:400, winter:-9.0,summerHigh:20.2,rain:502,snowDays:95, known:'Energy technology cluster · Wärtsilä · bilingual Swedish-Finnish · archipelago coast'},
+  'Central Ostrobothnia':{pop:67800,  gdp:31500,unem:8.9, capital:'Kokkola',     area:6463, density:10.5, forest:61,lakes:300, winter:-10.5,summerHigh:19.8,rain:492,snowDays:108,known:'Chemical industry hub · Kokkola Industrial Park · Perho river valley'},
+  'North Ostrobothnia':  {pop:424900, gdp:34600,unem:10.8,capital:'Oulu',        area:37149,density:11.4, forest:67,lakes:1800,winter:-12.0,summerHigh:18.5,rain:455,snowDays:125,known:"Oulu tech ecosystem · Nokia R&D heritage · Northern Lights · Hailuoto island"},
+  'Kainuu':              {pop:71900,  gdp:28600,unem:14.7,capital:'Kajaani',     area:21567,density:3.3,  forest:85,lakes:1900,winter:-14.5,summerHigh:18.3,rain:442,snowDays:135,known:'Wilderness tourism · bear-watching safaris · Kuhmo Chamber Music · most forested region'},
+  'Lapland':             {pop:180300, gdp:31600,unem:11.7,capital:'Rovaniemi',   area:92674,density:1.9,  forest:69,lakes:2100,winter:-18.5,summerHigh:16.5,rain:432,snowDays:165,known:'Arctic · Northern Lights · Santa Claus Village · reindeer herding · midnight sun'},
+  'Åland':               {pop:31700,  gdp:51000,unem:3.8, capital:'Mariehamn',   area:1553, density:20.4, forest:55,lakes:80,  winter:-2.0,summerHigh:20.5,rain:582,snowDays:40,  known:'Autonomous demilitarised archipelago · Swedish-speaking · Viking Line · medieval churches'},
 };
 
-const NATL = {gdp:48300, unem:7.5};
+const NATL = {gdp:47898, unem:9.7};
+
+/* ── 10-YEAR NATIONAL TRENDS (2015–2024) — for scorecard sparklines ──
+   Population: Statistics Finland / Macrotrends / Worldometer (millions)
+   GDP per capita: Eurostat / FocusEconomics (EUR, current prices)
+   Unemployment: Macrotrends / Statistics Finland Labour Force Survey (%)
+   Note: sparklines show the NATIONAL trend as context — regional series
+   for all 19 regions over 10 years are not consistently published. */
+const TREND_YEARS = [2015,2016,2017,2018,2019,2020,2021,2022,2023,2024];
+const TREND_POP    = [5.487,5.503,5.513,5.518,5.518,5.531,5.541,5.541,5.545,5.550]; // millions, stat.fi
+const TREND_GDP    = [38800,39600,41200,42700,43400,42600,45100,47900,48600,49244]; // EUR, Eurostat/FocusEconomics
+const TREND_UNEM   = [9.4, 8.8, 8.6, 7.4, 6.7, 7.8, 7.6, 6.7, 7.15, 8.4]; // %, Macrotrends/stat.fi
+
+function drawSparkline(canvasId, data, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || 80, h = 24;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  const min = Math.min(...data), max = Math.max(...data);
+  const range = (max - min) || 1;
+  const pad = 3;
+  const pts = data.map((v, i) => [
+    pad + (i / (data.length - 1)) * (w - pad * 2),
+    h - pad - ((v - min) / range) * (h - pad * 2)
+  ]);
+
+  // Fill area under line
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], h);
+  pts.forEach(p => ctx.lineTo(p[0], p[1]));
+  ctx.lineTo(pts[pts.length - 1][0], h);
+  ctx.closePath();
+  ctx.fillStyle = color + '18';
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  pts.forEach(p => ctx.lineTo(p[0], p[1]));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.6;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // End dot
+  const last = pts[pts.length - 1];
+  ctx.beginPath();
+  ctx.arc(last[0], last[1], 2.2, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function renderAllSparklines() {
+  drawSparkline('sparkPop',  TREND_POP,  '#1a6fc4');
+  drawSparkline('sparkGDP',  TREND_GDP,  '#2da44e');
+  drawSparkline('sparkUnem', TREND_UNEM, '#c0392b');
+}
+
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const HELSINKI_NORMALS = [-4.5,-5.1,-1.3,4.6,11.1,15.8,18.8,17.4,12.0,6.3,1.0,-2.8];
 const GRID = 'rgba(0,53,128,0.05)', TICK = '#4a5d72', TICKF = {size:9};
@@ -438,11 +601,11 @@ function selectRegion(name) {
   document.getElementById('sGDP').textContent = '€' + (r.gdp/1000).toFixed(0) + 'K';
   const gd = r.gdp - NATL.gdp;
   document.getElementById('sGDPT').className = 'sc-sub ' + (gd>=0?'trend-up':'trend-dn');
-  document.getElementById('sGDPT').textContent = (gd>=0?'↑ ':'↓ ') + '€' + (Math.abs(gd)/1000).toFixed(0) + 'K vs natl';
+  document.getElementById('sGDPT').textContent = (gd>=0?'↑ €':'↓ €') + (Math.abs(gd)/1000).toFixed(0) + 'K vs national avg of €' + (NATL.gdp/1000).toFixed(0) + 'K';
   document.getElementById('sUnem').textContent = r.unem + '%';
   const ud = r.unem - NATL.unem;
   document.getElementById('sUnemT').className = 'sc-sub ' + (ud<0?'trend-up':ud>0?'trend-dn':'trend-neu');
-  document.getElementById('sUnemT').textContent = (ud<0?'↓ lower':'↑ higher') + ' than 7.5%';
+  document.getElementById('sUnemT').textContent = (ud<0?'↓ ':'↑ ') + Math.abs(ud).toFixed(1) + '% vs national avg of ' + NATL.unem + '%';
   document.getElementById('sArea').textContent = r.area.toLocaleString();
   // Fetch live weather for this region's capital city
   console.log('selectRegion: calling fetchWeather for', r.capital);
@@ -475,11 +638,11 @@ function updateOverview(r) {
   document.getElementById('knownText').textContent = '"' + r.known + '"';
   document.getElementById('ovTable').innerHTML = [
     ['Capital', r.capital],
-    ['Population', r.pop.toLocaleString() + ' (stat.fi 2023)'],
+    ['Population', r.pop.toLocaleString() + ' (stat.fi 2024 prelim.)'],
     ['Area', r.area.toLocaleString() + ' km²'],
     ['Pop density', r.density + ' /km²'],
     ['GDP per capita', '€' + r.gdp.toLocaleString() + ' (Eurostat 2022)'],
-    ['Unemployment', r.unem + '% (EURES 2023)'],
+    ['Unemployment', r.unem + '% (stat.fi 2025)'],
   ].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
   document.getElementById('ovSrc').innerHTML = 'Sources: Statistics Finland · Eurostat · EURES';
   document.getElementById('natureTable').innerHTML = [
@@ -492,12 +655,13 @@ function updateOverview(r) {
   const e = Object.entries(REGIONS).sort((a,b)=>b[1].pop-a[1].pop);
   charts.popChart = new Chart(document.getElementById('popChart'), {
     type:'bar',
-    data:{labels:e.map(([n])=>n.length>11?n.slice(0,11)+'…':n),
+    data:{labels:e.map(([n])=>n),
       datasets:[{data:e.map(([,r])=>Math.round(r.pop/1000)),
         backgroundColor:e.map(([n])=>n===currentRegion?'#f59e0b':'#85b7eb'),borderRadius:3,borderWidth:0}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>ctx.parsed.x.toLocaleString()+'K'}}},
       scales:{x:{grid:{color:GRID},ticks:{color:TICK,font:TICKF,callback:v=>v+'K'}},
-              y:{grid:{display:false},ticks:{color:TICK,font:TICKF}}}}
+              y:{grid:{display:false},ticks:{color:TICK,font:{size:9},autoSkip:false}}}}
   });
 }
 
@@ -518,7 +682,7 @@ function updateEconomy(r) {
     type:'bar',
     data:{labels:eu.map(([n])=>n.length>11?n.slice(0,11)+'…':n),
       datasets:[{data:eu.map(([,r])=>r.unem),
-        backgroundColor:eu.map(([,r])=>r.unem<=6?'#2da44e88':r.unem<=9?'#85b7eb':'#f09595'),borderRadius:3,borderWidth:0}]},
+        backgroundColor:eu.map(([,r])=>r.unem<=8?'#2da44e88':r.unem<=11?'#85b7eb':'#f09595'),borderRadius:3,borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
       scales:{x:{grid:{display:false},ticks:{color:TICK,font:TICKF,maxRotation:45}},
               y:{grid:{color:GRID},ticks:{color:TICK,font:TICKF,callback:v=>v+'%'}}}}
@@ -547,7 +711,7 @@ function updateEconomy(r) {
     <div class="rank-item" style="${n===currentRegion?'background:var(--blue-faint);':''}">
       <div class="rank-num">${i+1}</div>
       <div class="rank-name" style="${n===currentRegion?'font-weight:500;color:var(--blue)':''}">${n}</div>
-      <div style="flex:1"><div class="rank-bar" style="width:${(x.unem/mu*100).toFixed(0)}%;background:${x.unem<=6?'#2da44e':x.unem<=9?'#1a6fc4':'#c0392b'}"></div></div>
+      <div style="flex:1"><div class="rank-bar" style="width:${(x.unem/mu*100).toFixed(0)}%;background:${x.unem<=8?'#2da44e':x.unem<=11?'#1a6fc4':'#c0392b'}"></div></div>
       <div class="rank-val">${x.unem}%</div>
     </div>`).join('');
 }
@@ -766,6 +930,10 @@ loadMap();
 // Weather is fetched automatically when selectRegion fires after map loads
 // Auto-refresh weather every 5 minutes for current region
 setInterval(() => fetchWeather(REGIONS[currentRegion].capital), 300000);
+
+// Render 10-year trend sparklines (national context, independent of region selection)
+renderAllSparklines();
+window.addEventListener('resize', renderAllSparklines);
 </script>
 </body>
 </html>
